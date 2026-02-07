@@ -165,40 +165,33 @@ async function fetchFutures() {
       const closes = q.close || [];
       const meta = r.meta;
       
-      // Filter out null days (holidays etc)
       const days = [];
       for (let i = 0; i < closes.length; i++) {
         if (closes[i] != null && highs[i] != null && lows[i] != null) {
-          days.push({ h: highs[i], l: lows[i], c: closes[i] });
+          days.push({ h: highs[i], l: lows[i], c: closes[i], r: highs[i] - lows[i] });
         }
       }
-      
       if (days.length < 5) throw new Error(`Not enough data: ${sym}`);
       
       const cur = meta.regularMarketPrice;
       const prevClose = days.length >= 2 ? days[days.length - 2].c : null;
+      const p = label === "VIX" || label === "ZB" ? 2 : 2; // decimal places
       
-      // ADR calculations
+      // ADR = average of (high - low) over N days
       const adr = (n) => {
-        const recent = days.slice(-n);
-        if (recent.length < n) return null;
-        const avg = recent.reduce((sum, d) => sum + (d.h - d.l), 0) / recent.length;
-        return avg;
+        const sl = days.slice(-n);
+        return sl.length >= n ? sl.reduce((s, d) => s + d.r, 0) / sl.length : null;
       };
       
-      const adr5 = adr(5);
-      const adr10 = adr(10);
+      // Yesterday's actual range
+      const yestRange = days.length >= 1 ? days[days.length - 1].r : null;
+      
+      // Today's intraday range from live meta
+      const todayRange = (meta.regularMarketDayHigh && meta.regularMarketDayLow)
+        ? meta.regularMarketDayHigh - meta.regularMarketDayLow : null;
+      
       const adr20 = adr(20);
-      
-      // Today's range so far (from meta)
-      const todayRange = (meta.regularMarketDayHigh && meta.regularMarketDayLow) 
-        ? meta.regularMarketDayHigh - meta.regularMarketDayLow 
-        : null;
-      
-      // ADR% (as percentage of price)
       const adr20pct = (adr20 && cur) ? (adr20 / cur) * 100 : null;
-      
-      // Today's range as % of ADR20
       const rangeUsed = (todayRange && adr20) ? (todayRange / adr20) * 100 : null;
       
       // Rolling returns
@@ -207,33 +200,28 @@ async function fetchFutures() {
         const old = days[days.length - 1 - n].c;
         return old > 0 ? ((cur - old) / old) * 100 : null;
       };
-      
       const dayChg = prevClose ? ((cur - prevClose) / prevClose) * 100 : null;
+      
+      const f2 = v => v != null ? parseFloat(v.toFixed(2)) : null;
+      const f0 = v => v != null ? parseFloat(v.toFixed(0)) : null;
       
       return {
         label, name, ok: true,
-        cur: cur ? parseFloat(cur.toFixed(2)) : null,
-        dayChg: dayChg ? parseFloat(dayChg.toFixed(2)) : null,
-        dayHi: meta.regularMarketDayHigh ? parseFloat(meta.regularMarketDayHigh.toFixed(2)) : null,
-        dayLo: meta.regularMarketDayLow ? parseFloat(meta.regularMarketDayLow.toFixed(2)) : null,
-        todayRange: todayRange ? parseFloat(todayRange.toFixed(2)) : null,
-        adr5: adr5 ? parseFloat(adr5.toFixed(2)) : null,
-        adr10: adr10 ? parseFloat(adr10.toFixed(2)) : null,
-        adr20: adr20 ? parseFloat(adr20.toFixed(2)) : null,
-        adr20pct: adr20pct ? parseFloat(adr20pct.toFixed(2)) : null,
-        rangeUsed: rangeUsed ? parseFloat(rangeUsed.toFixed(0)) : null,
-        ret1d: dayChg ? parseFloat(dayChg.toFixed(2)) : null,
-        ret5d: retN(5) ? parseFloat(retN(5).toFixed(2)) : null,
-        ret10d: retN(10) ? parseFloat(retN(10).toFixed(2)) : null,
-        ret20d: retN(20) ? parseFloat(retN(20).toFixed(2)) : null,
-        ret60d: retN(60) ? parseFloat(retN(60).toFixed(2)) : null,
+        cur: f2(cur), dayChg: f2(dayChg),
+        dayHi: f2(meta.regularMarketDayHigh), dayLo: f2(meta.regularMarketDayLow),
+        // ADR series: 20, 10, 5, 3, yesterday, today
+        adr20: f2(adr(20)), adr10: f2(adr(10)), adr5: f2(adr(5)), adr3: f2(adr(3)),
+        yestRange: f2(yestRange), todayRange: f2(todayRange),
+        adr20pct: f2(adr20pct), rangeUsed: f0(rangeUsed),
+        // Rolling returns
+        ret1d: f2(dayChg), ret5d: f2(retN(5)), ret10d: f2(retN(10)),
+        ret20d: f2(retN(20)), ret60d: f2(retN(60)),
       };
     } catch (e) {
       console.error(`Futures ${label}:`, e.message);
       return { label, name, ok: false, error: e.message };
     }
   }));
-  
   return results;
 }
 
