@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 
 const F="'IBM Plex Mono',monospace",FD="'Instrument Sans',sans-serif";
 const BG="#060810",CB="rgba(255,255,255,.018)",CBR="rgba(255,255,255,.055)";
-const MT="#6b7280",DM="#4b5563",TX="#d1d5db";
+const MT="#9ca3af",DM="#6b7280",TX="#e5e7eb";
 const GRN="#22c55e",YLW="#eab308",ORG="#f97316",RED="#ef4444",BLU="#3b82f6",PRP="#a855f7";
 
 // ── AUDIO ──
@@ -74,7 +74,7 @@ function parseMarcEmail(text){
 
 // ── SVG COMPONENTS ──
 function Spark({data,color=ORG,w=120,h=32,area=false,thresh=null,tC=RED}){
-  if(!data?.length||data.length<2)return <div style={{width:w,height:h,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:DM,fontFamily:F}}>No data</div>;
+  if(!data?.length||data.length<2)return <div style={{width:w,height:h,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:DM,fontFamily:F}}>No data</div>;
   const mn=Math.min(...data)*.97,mx=Math.max(...data)*1.03,rng=mx-mn||1;
   const pts=data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-mn)/rng)*h}`).join(" ");
   const ly=h-((data[data.length-1]-mn)/rng)*h;
@@ -116,8 +116,8 @@ function Badge({text,color,sz="sm"}){
   return <span style={{display:"inline-block",...s,borderRadius:4,background:`${color}15`,color,fontWeight:700,letterSpacing:".04em",fontFamily:F,border:`1px solid ${color}22`}}>{text}</span>;
 }
 function SourceBadge({status}){
-  const live=status==="LIVE";
-  return <span style={{fontSize:7,padding:"1px 5px",borderRadius:3,background:live?"rgba(34,197,94,.1)":"rgba(234,179,8,.1)",color:live?GRN:YLW,fontFamily:F,fontWeight:600}}>{live?"LIVE":"MANUAL"}</span>;
+  const live=status?.includes?.("LIVE");
+  return <span style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:live?"rgba(34,197,94,.1)":status==="MANUAL"?"rgba(234,179,8,.1)":"rgba(239,68,68,.1)",color:live?GRN:status==="MANUAL"?YLW:RED,fontFamily:F,fontWeight:600}}>{live?"LIVE":status==="MANUAL"?"MANUAL":"ERR"}</span>;
 }
 
 // ── DEFAULTS for null put/call data ──
@@ -138,7 +138,7 @@ export default function Dashboard(){
   const [notes,setNotes]=useState([]);
   const [noteInput,setNoteInput]=useState("");
   const [noteDate,setNoteDate]=useState(()=>new Date().toLocaleDateString("en-US",{month:"short",day:"numeric"}));
-  const [manualPC,setManualPC]=useState({pcc:"",pcce:"",cpce:""});
+  const [manualPC,setManualPC]=useState({pcc:"",pcce:"",cpce:"",bpndx:""});
   const prevTier=useRef(null);
   const prevBounce=useRef(null);
 
@@ -153,6 +153,7 @@ export default function Dashboard(){
       if(manualPC.pcc&&!json.pcc.cur)json.pcc.cur=parseFloat(manualPC.pcc);
       if(manualPC.pcce&&!json.pcce.cur)json.pcce.cur=parseFloat(manualPC.pcce);
       if(manualPC.cpce&&!json.cpce.cur)json.cpce.cur=parseFloat(manualPC.cpce);
+      if(manualPC.bpndx)json.bp={cur:parseFloat(manualPC.bpndx),prev:null,h30:[]};
       setData(json);
       setError(null);
     }catch(e){setError(e.message);}finally{setLoading(false);}
@@ -275,10 +276,10 @@ export default function Dashboard(){
             <div style={{width:5,height:5,borderRadius:"50%",background:cd<=60?RED:GRN,animation:cd<=60?"p 1s infinite":"none"}}/>
             <span style={{fontSize:9,color:MT,fontFamily:F}}>⟳ {fmt(cd)}</span>
           </div>
-          {data.fetchTime&&<span style={{fontSize:8,color:DM,fontFamily:F}}>{data.fetchTime}ms</span>}
+          {data.fetchTime&&<span style={{fontSize:10,color:DM,fontFamily:F}}>{data.fetchTime}ms</span>}
           <button className="b bg" onClick={()=>setPanel(panel==="alerts"?null:"alerts")} style={{position:"relative",padding:"3px 8px"}}>
             <span style={{fontSize:12}}>{muted?"🔇":"🔔"}</span>
-            {alerts.length>0&&<span style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:RED,fontSize:7,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>{Math.min(alerts.length,9)}</span>}
+            {alerts.length>0&&<span style={{position:"absolute",top:-3,right:-3,width:13,height:13,borderRadius:"50%",background:RED,fontSize:9,color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:F}}>{Math.min(alerts.length,9)}</span>}
           </button>
           <button className="b bg" onClick={()=>setPanel(panel==="notes"?null:"notes")} style={{padding:"3px 8px"}}><span style={{fontSize:12}}>📋</span></button>
           <button className="b bg" onClick={()=>setPanel(panel==="settings"?null:"settings")} style={{padding:"3px 8px"}}><span style={{fontSize:12}}>⚙</span></button>
@@ -301,7 +302,7 @@ export default function Dashboard(){
           </div>
           {alerts.length===0&&<div style={{textAlign:"center",padding:20,color:DM,fontSize:10,fontFamily:F}}>No alerts yet</div>}
           {alerts.map((a,i)=>(<div key={i} style={{padding:"7px 9px",marginBottom:3,borderRadius:5,background:"rgba(255,255,255,.02)",borderLeft:`3px solid ${a.c}`}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:1}}><span style={{fontSize:8,color:a.c,fontFamily:F,fontWeight:600,textTransform:"uppercase"}}>{a.ty}</span><span style={{fontSize:8,color:DM,fontFamily:F}}>{a.t}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:1}}><span style={{fontSize:8,color:a.c,fontFamily:F,fontWeight:600,textTransform:"uppercase"}}>{a.ty}</span><span style={{fontSize:10,color:DM,fontFamily:F}}>{a.t}</span></div>
             <div style={{fontSize:10,color:TX,fontFamily:F}}>{a.m}</div>
           </div>))}
         </div>
@@ -321,12 +322,12 @@ export default function Dashboard(){
             <textarea value={noteInput} onChange={e=>setNoteInput(e.target.value)} placeholder={"Paste Marc's email or notes here.\nAuto-detects: CPCE, VRatio, BPNDX, VIX values\nbullish/bearish/neutral, support/resistance,\nprice ranges, backwardation, squeeze calls.\nMultiple lines = multiple notes."}/>
             <button className="b bp" onClick={addNote} style={{marginTop:5,width:"100%"}}>+ Parse & Add Notes</button>
           </div>
-          <div style={{fontSize:8,color:DM,fontFamily:F,marginBottom:8,padding:"5px 7px",background:"rgba(255,255,255,.02)",borderRadius:4}}>💡 Each line becomes a separate tagged note</div>
+          <div style={{fontSize:10,color:DM,fontFamily:F,marginBottom:8,padding:"5px 7px",background:"rgba(255,255,255,.02)",borderRadius:4}}>💡 Each line becomes a separate tagged note</div>
           {notes.map((n,i)=>(<div key={i} style={{padding:"8px 10px",marginBottom:4,borderRadius:5,background:"rgba(59,130,246,.02)",borderLeft:"3px solid rgba(59,130,246,.25)"}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:9,color:BLU,fontFamily:F,fontWeight:600}}>MARC</span><span style={{fontSize:8,color:DM,fontFamily:F}}>{n.d}</span></div>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}><span style={{fontSize:9,color:BLU,fontFamily:F,fontWeight:600}}>MARC</span><span style={{fontSize:10,color:DM,fontFamily:F}}>{n.d}</span></div>
             <div style={{fontSize:10,color:"#9ca3af",fontFamily:F,lineHeight:1.4}}>{n.t}</div>
             {n.tags?.length>0&&<div style={{display:"flex",gap:3,marginTop:3,flexWrap:"wrap"}}>{n.tags.map((tag,j)=>(
-              <span key={j} style={{fontSize:7,padding:"1px 5px",borderRadius:3,background:tag.includes("BEARISH")?"rgba(239,68,68,.1)":tag.includes("BULLISH")?"rgba(34,197,94,.1)":"rgba(255,255,255,.04)",color:tag.includes("BEARISH")?RED:tag.includes("BULLISH")?GRN:MT,fontFamily:F}}>{tag}</span>
+              <span key={j} style={{fontSize:9,padding:"1px 5px",borderRadius:3,background:tag.includes("BEARISH")?"rgba(239,68,68,.1)":tag.includes("BULLISH")?"rgba(34,197,94,.1)":"rgba(255,255,255,.04)",color:tag.includes("BEARISH")?RED:tag.includes("BULLISH")?GRN:MT,fontFamily:F}}>{tag}</span>
             ))}</div>}
           </div>))}
         </div>
@@ -347,13 +348,13 @@ export default function Dashboard(){
             <div style={{display:"flex",gap:5}}><button className={`b ${!muted?"bp":"bg"}`} onClick={()=>setMuted(false)}>On</button><button className={`b ${muted?"br":"bg"}`} onClick={()=>setMuted(true)}>Muted</button></div>
           </div>
           <div style={{marginBottom:14}}>
-            <div style={{fontSize:10,fontWeight:600,color:TX,fontFamily:F,marginBottom:6}}>Manual Put/Call Override</div>
-            <div style={{fontSize:8,color:DM,fontFamily:F,marginBottom:6}}>If CBOE data isn't auto-fetching, enter values here from your broker or CBOE.com. These override API data when the API returns null.</div>
-            {[["PCC (Equity P/C)","pcc"],["PCCE (Eq+Index P/C)","pcce"],["CPCE (Equity P/C)","cpce"]].map(([label,key])=>(
+            <div style={{fontSize:10,fontWeight:600,color:TX,fontFamily:F,marginBottom:6}}>Manual Data Entry</div>
+            <div style={{fontSize:10,color:DM,fontFamily:F,marginBottom:6}}>Values entered here override API data. BPNDX has no free API — enter it daily from StockCharts or your broker.</div>
+            {[["PCC (Total P/C)","pcc"],["PCCE (Eq+Index P/C)","pcce"],["CPCE (Equity P/C)","cpce"],["BPNDX (Nasdaq BP%)","bpndx"]].map(([label,key])=>(
               <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
                 <span style={{fontSize:10,color:MT,fontFamily:F}}>{label}</span>
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
-                  <input type="text" value={manualPC[key]} onChange={e=>setManualPC(p=>({...p,[key]:e.target.value}))} style={{width:70,textAlign:"right"}} placeholder={data?.sources?.[key]==="LIVE"?"(live)":"0.000"}/>
+                  <input type="text" value={manualPC[key]} onChange={e=>setManualPC(p=>({...p,[key]:e.target.value}))} style={{width:70,textAlign:"right"}} placeholder={data?.sources?.[key]?.includes("LIVE")?"(live)":key==="bpndx"?"37":"0.000"}/>
                   <SourceBadge status={data?.sources?.[key]}/>
                 </div>
               </div>
@@ -362,10 +363,10 @@ export default function Dashboard(){
           </div>
           <div style={{padding:"8px 10px",borderRadius:5,background:"rgba(255,255,255,.02)",border:`1px solid ${CBR}`}}>
             <div style={{fontSize:9,fontWeight:600,color:TX,fontFamily:F,marginBottom:4}}>Data Source Status</div>
-            {data.sources&&Object.entries(data.sources).map(([k,v])=>(
+            {data.sources&&Object.entries(data.sources).filter(([k])=>k!=="cboeDate").map(([k,v])=>(
               <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}>
                 <span style={{fontSize:9,color:MT,fontFamily:F}}>{k.toUpperCase()}</span>
-                <span style={{fontSize:9,color:v==="LIVE"?GRN:v==="MANUAL"?YLW:RED,fontFamily:F}}>{v}</span>
+                <span style={{fontSize:9,color:v?.includes?.("LIVE")?GRN:v==="MANUAL"?YLW:RED,fontFamily:F}}>{v}</span>
               </div>
             ))}
           </div>
@@ -434,16 +435,16 @@ export default function Dashboard(){
                 <div key={i} style={{padding:"6px 8px",borderRadius:5,background:c.met?"rgba(34,197,94,.04)":c.app?"rgba(234,179,8,.02)":"rgba(255,255,255,.01)",border:`1px solid ${c.met?"rgba(34,197,94,.15)":c.app?"rgba(234,179,8,.08)":"rgba(255,255,255,.04)"}`,opacity:c.live?1:0.5}}>
                   <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
                     <span style={{fontSize:8,fontWeight:600,color:c.met?GRN:c.app?YLW:MT,fontFamily:F}}>{c.met?"✓":c.app?"◐":"○"} {c.l}</span>
-                    <span style={{fontSize:7,color:DM,fontFamily:F}}>{c.src}</span>
+                    <span style={{fontSize:9,color:DM,fontFamily:F}}>{c.src}</span>
                   </div>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:3}}>
                     <span style={{fontSize:15,fontWeight:700,color:c.met?GRN:c.app?YLW:"#9ca3af",fontFamily:F}}>{c.v!==null&&c.v!==undefined?Number(c.v).toFixed(c.v<10?3:1):"—"}</span>
-                    <span style={{fontSize:7,color:DM,fontFamily:F}}>{c.tgt}</span>
+                    <span style={{fontSize:9,color:DM,fontFamily:F}}>{c.tgt}</span>
                   </div>
                   <div style={{height:3,background:"rgba(255,255,255,.04)",borderRadius:2}}>
                     <div style={{height:"100%",borderRadius:2,width:`${Math.min(c.p||0,100)}%`,background:c.met?GRN:c.app?YLW:DM}}/>
                   </div>
-                  {!c.live&&<div style={{fontSize:6,color:YLW,fontFamily:F,marginTop:2}}>⚠ manual entry needed</div>}
+                  {!c.live&&<div style={{fontSize:8,color:YLW,fontFamily:F,marginTop:2}}>⚠ manual entry needed</div>}
                 </div>
               ))}
             </div>
@@ -465,17 +466,17 @@ export default function Dashboard(){
               return(
                 <div key={i} className="hv" style={{padding:"12px 14px",borderRadius:10,background:CB,border:`1px solid ${CBR}`}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                    <div><span style={{fontSize:9,color:MT,letterSpacing:".08em",fontFamily:F}}>{r.label}</span><span style={{fontSize:7,color:DM,fontFamily:F,marginLeft:5}}>{r.sub}</span></div>
+                    <div><span style={{fontSize:9,color:MT,letterSpacing:".08em",fontFamily:F}}>{r.label}</span><span style={{fontSize:9,color:DM,fontFamily:F,marginLeft:5}}>{r.sub}</span></div>
                     <div style={{display:"flex",gap:3}}><SourceBadge status={r.srcStatus}/><Badge text={zone} color={zC}/></div>
                   </div>
                   <div style={{fontSize:24,fontWeight:700,color:zC,fontFamily:F,marginBottom:4}}>{hasData?r.val.toFixed(3):"—"}</div>
-                  {hasData&&r.h?.length>1?<><DualSpark d1={r.h} d2={r.ma} c1={zC} c2="rgba(255,255,255,.25)" w={155} h={22} thresh={r.hi}/><div style={{fontSize:7,color:DM,fontFamily:F,marginTop:2}}>with 10MA</div></>:<div style={{fontSize:9,color:YLW,fontFamily:F,padding:"8px 0"}}>Enter in Settings → Manual Override</div>}
+                  {hasData&&r.h?.length>1?<><DualSpark d1={r.h} d2={r.ma} c1={zC} c2="rgba(255,255,255,.25)" w={155} h={22} thresh={r.hi}/><div style={{fontSize:9,color:DM,fontFamily:F,marginTop:2}}>with 10MA</div></>:<div style={{fontSize:9,color:YLW,fontFamily:F,padding:"8px 0"}}>Enter in Settings → Manual Override</div>}
                   {hasData&&<div style={{position:"relative",height:6,background:"rgba(255,255,255,.04)",borderRadius:3,margin:"6px 0 3px"}}>
                     <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${100-((r.hi-r.mn)/(r.mx-r.mn))*100}%`,background:"rgba(239,68,68,.1)",borderRadius:"0 3px 3px 0"}}/>
                     <div style={{position:"absolute",left:0,top:0,bottom:0,width:`${((r.lo-r.mn)/(r.mx-r.mn))*100}%`,background:"rgba(59,130,246,.1)",borderRadius:"3px 0 0 3px"}}/>
                     <div style={{position:"absolute",left:`${pct}%`,top:-1,width:3,height:8,background:zC,borderRadius:2,transform:"translateX(-50%)"}}/>
                   </div>}
-                  <div style={{display:"flex",justifyContent:"space-between",fontSize:7,color:DM,fontFamily:F}}><span>↓{r.lo}</span><span>{r.src}</span><span>↑{r.hi}</span></div>
+                  <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:DM,fontFamily:F}}><span>↓{r.lo}</span><span>{r.src}</span><span>↑{r.hi}</span></div>
                 </div>
               );
             })}
@@ -492,9 +493,9 @@ export default function Dashboard(){
                   {data.cpce.ma10&&<span style={{fontSize:9,color:MT,fontFamily:F}}>10MA:<span style={{color:BLU}}>{Number(data.cpce.ma10).toFixed(3)}</span></span>}
                 </div>
                 <DualSpark d1={data.cpce.h30} d2={data.cpce.hMA} c1={cpC} c2={BLU} w={155} h={22} thresh={0.75}/>
-                {data.cpce.roc1!==null&&<div style={{fontSize:8,color:DM,fontFamily:F,marginTop:2}}>ROC(1): <span style={{color:data.cpce.roc1>0?GRN:RED}}>{data.cpce.roc1>0?"+":""}{data.cpce.roc1}%</span><span style={{float:"right"}}>Marc</span></div>}
+                {data.cpce.roc1!==null&&<div style={{fontSize:10,color:DM,fontFamily:F,marginTop:2}}>ROC(1): <span style={{color:data.cpce.roc1>0?GRN:RED}}>{data.cpce.roc1>0?"+":""}{data.cpce.roc1}%</span><span style={{float:"right"}}>Marc</span></div>}
               </>:<div style={{fontSize:9,color:YLW,fontFamily:F,padding:"8px 0"}}>Enter in Settings → Manual Override</div>}
-              <div style={{fontSize:7,color:DM,fontFamily:F,marginTop:3,fontStyle:"italic"}}>"If CPCE buried → not done"</div>
+              <div style={{fontSize:9,color:DM,fontFamily:F,marginTop:3,fontStyle:"italic"}}>"If CPCE buried → not done"</div>
             </div>
 
             {/* SPX */}
@@ -508,7 +509,7 @@ export default function Dashboard(){
                 {(data.spx?.pct||0)>=0?"▲":"▼"} {Math.abs(data.spx?.chg||0).toFixed(1)} ({(data.spx?.pct||0).toFixed(2)}%)
               </div>
               <div style={{padding:"6px 8px",borderRadius:5,background:"rgba(255,255,255,.015)"}}>
-                <div style={{fontSize:8,color:DM,fontFamily:F,lineHeight:1.4}}>
+                <div style={{fontSize:10,color:DM,fontFamily:F,lineHeight:1.4}}>
                   {(data.spx?.pct||0)>=0.5?"Rally — first green. Squeeze?":
                    (data.spx?.pct||0)<=-0.5?"Selling continues. Watch capitulation.":
                    "Choppy. Awaiting signal."}
@@ -534,7 +535,7 @@ export default function Dashboard(){
               {[{v:30,l:"ExtOS",c:RED},{v:40,l:"OS",c:ORG},{v:65,l:"OB",c:BLU},{v:80,l:"ExtOB",c:"#6366f1"}].map((lv,j)=>(
                 <div key={j} style={{flex:1,textAlign:"center",padding:2,borderRadius:3,background:"rgba(255,255,255,.015)"}}>
                   <div style={{fontSize:11,fontWeight:600,color:lv.c,fontFamily:F}}>{lv.v}</div>
-                  <div style={{fontSize:6,color:DM}}>{lv.l}</div>
+                  <div style={{fontSize:10,color:DM}}>{lv.l}</div>
                 </div>
               ))}
             </div>
@@ -546,9 +547,9 @@ export default function Dashboard(){
               <Badge text={tStat} color={vr<1.0?RED:GRN}/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
-              <div><div style={{fontSize:7,color:DM,fontFamily:F}}>VIX9D</div><div style={{fontSize:16,fontWeight:700,color:data.vix9d?.cur>data.vix?.cur?RED:PRP,fontFamily:F}}>{v(data.vix9d?.cur)}</div></div>
-              <div><div style={{fontSize:7,color:DM,fontFamily:F}}>VIX</div><div style={{fontSize:16,fontWeight:700,color:vC,fontFamily:F}}>{v(data.vix?.cur)}</div></div>
-              <div><div style={{fontSize:7,color:DM,fontFamily:F}}>VIX3M</div><div style={{fontSize:16,fontWeight:700,color:"#9ca3af",fontFamily:F}}>{v(data.vix3m?.cur)}</div></div>
+              <div><div style={{fontSize:9,color:DM,fontFamily:F}}>VIX9D</div><div style={{fontSize:16,fontWeight:700,color:data.vix9d?.cur>data.vix?.cur?RED:PRP,fontFamily:F}}>{v(data.vix9d?.cur)}</div></div>
+              <div><div style={{fontSize:9,color:DM,fontFamily:F}}>VIX</div><div style={{fontSize:16,fontWeight:700,color:vC,fontFamily:F}}>{v(data.vix?.cur)}</div></div>
+              <div><div style={{fontSize:9,color:DM,fontFamily:F}}>VIX3M</div><div style={{fontSize:16,fontWeight:700,color:"#9ca3af",fontFamily:F}}>{v(data.vix3m?.cur)}</div></div>
             </div>
             <CurveChart d1={data.term?.h30} d2={data.term?.h30_9d} l1="3M/1M" l2="9D/1M" c1={YLW} c2={PRP} w={220} h={38}/>
             <div style={{padding:"5px 8px",borderRadius:4,background:"rgba(255,255,255,.015)",marginTop:5}}>
@@ -563,14 +564,14 @@ export default function Dashboard(){
               <Badge text={(data.credit?.z||0)>=1.0?"STRESS":(data.credit?.z||0)>=0.5?"WIDENING":"NORMAL"} color={cC}/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:6}}>
-              <div><div style={{fontSize:7,color:DM,fontFamily:F}}>HY</div><div style={{fontSize:16,fontWeight:700,color:ORG,fontFamily:F}}>{v(data.credit?.hy,2)}z</div></div>
-              <div><div style={{fontSize:7,color:DM,fontFamily:F}}>IG</div><div style={{fontSize:16,fontWeight:700,color:BLU,fontFamily:F}}>{v(data.credit?.ig,2)}z</div></div>
-              <div><div style={{fontSize:7,color:DM,fontFamily:F}}>HY-IG</div><div style={{fontSize:16,fontWeight:700,color:PRP,fontFamily:F}}>{v(data.credit?.diff,2)}</div></div>
+              <div><div style={{fontSize:9,color:DM,fontFamily:F}}>HY</div><div style={{fontSize:16,fontWeight:700,color:ORG,fontFamily:F}}>{v(data.credit?.hy,2)}z</div></div>
+              <div><div style={{fontSize:9,color:DM,fontFamily:F}}>IG</div><div style={{fontSize:16,fontWeight:700,color:BLU,fontFamily:F}}>{v(data.credit?.ig,2)}z</div></div>
+              <div><div style={{fontSize:9,color:DM,fontFamily:F}}>HY-IG</div><div style={{fontSize:16,fontWeight:700,color:PRP,fontFamily:F}}>{v(data.credit?.diff,2)}</div></div>
             </div>
             <SpreadChart hHY={data.credit?.hHY} hIG={data.credit?.hIG} w={220} h={38}/>
             <div style={{padding:"5px 8px",borderRadius:4,background:"rgba(255,255,255,.015)",marginTop:5}}>
               <div style={{fontSize:8,color:MT,fontFamily:F}}>Composite Z</div>
-              <div style={{display:"flex",alignItems:"baseline",gap:4}}><span style={{fontSize:18,fontWeight:700,color:cC,fontFamily:F}}>{v(data.credit?.z,2)}z</span><span style={{fontSize:8,color:DM,fontFamily:F}}>trigger: 1.0z</span></div>
+              <div style={{display:"flex",alignItems:"baseline",gap:4}}><span style={{fontSize:18,fontWeight:700,color:cC,fontFamily:F}}>{v(data.credit?.z,2)}z</span><span style={{fontSize:10,color:DM,fontFamily:F}}>trigger: 1.0z</span></div>
             </div>
           </div>
         </div>
@@ -617,7 +618,7 @@ export default function Dashboard(){
             </div>
             {(()=>{const P={NORMAL:{a:"8.2%",b:"1.0%",c:"0.2%",d:"0.0%",e:"-1.1%",f:"0.8x",g:"12",h:"2.1%"},WATCH:{a:"18.5%",b:"4.2%",c:"1.1%",d:"0.3%",e:"-1.8%",f:"1.5x",g:"28",h:"5.4%"},ELEVATED:{a:"33.0%",b:"10.7%",c:"2.7%",d:"0.7%",e:"-2.6%",f:"2.5x",g:"55",h:"9.1%"},RED:{a:"52.0%",b:"22.5%",c:"8.3%",d:"3.2%",e:"-4.8%",f:"5.1x",g:"89",h:"14.7%"},LOADING:{a:"—",b:"—",c:"—",d:"—",e:"—",f:"—",g:"—",h:"—"}};
               const p=P[risk.tier]||P.NORMAL;
-              return <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4}}>{[{v:p.a,l:"5%+ dec"},{v:p.b,l:"10%+ dec"},{v:p.c,l:"15%+ dec"},{v:p.d,l:"20%+ crash"},{v:p.e,l:"Med DD"},{v:p.f,l:"vs base"},{v:p.g,l:"Days rec"},{v:p.h,l:"Since '15"}].map((x,j)=>(<div key={j} style={{textAlign:"center",padding:4}}><div style={{fontSize:14,fontWeight:700,color:ORG,fontFamily:F}}>{x.v}</div><div style={{fontSize:7,color:DM}}>{x.l}</div></div>))}</div>;
+              return <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:4}}>{[{v:p.a,l:"5%+ dec"},{v:p.b,l:"10%+ dec"},{v:p.c,l:"15%+ dec"},{v:p.d,l:"20%+ crash"},{v:p.e,l:"Med DD"},{v:p.f,l:"vs base"},{v:p.g,l:"Days rec"},{v:p.h,l:"Since '15"}].map((x,j)=>(<div key={j} style={{textAlign:"center",padding:4}}><div style={{fontSize:14,fontWeight:700,color:ORG,fontFamily:F}}>{x.v}</div><div style={{fontSize:9,color:DM}}>{x.l}</div></div>))}</div>;
             })()}
           </div>
         </div>
@@ -626,7 +627,7 @@ export default function Dashboard(){
         <div className="hv" style={{padding:"14px 16px",borderRadius:10,background:CB,border:`1px solid ${CBR}`,marginBottom:16}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{fontSize:11,fontWeight:600,fontFamily:F}}>S&P 500</span>
-            <span style={{fontSize:8,color:DM,fontFamily:F}}>6-month price history</span>
+            <span style={{fontSize:10,color:DM,fontFamily:F}}>6-month price history</span>
           </div>
           <SPXChart data={data.spx?.hM} warns={data.spx?.warns||[]} w={700} h={80}/>
         </div>
@@ -664,12 +665,12 @@ export default function Dashboard(){
         <div style={{padding:"10px 14px",borderRadius:8,background:"rgba(255,255,255,.008)",border:"1px solid rgba(255,255,255,.03)",marginBottom:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
             <span style={{fontSize:8,letterSpacing:".1em",color:DM,fontFamily:F}}>DATA SOURCES</span>
-            <span style={{fontSize:8,color:DM,fontFamily:F}}>Next: {fmt(cd)} · Every {ri}min · Fetched {data.fetchTime}ms</span>
+            <span style={{fontSize:10,color:DM,fontFamily:F}}>Next: {fmt(cd)} · Every {ri}min · Fetched {data.fetchTime}ms</span>
           </div>
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {data.sources&&Object.entries(data.sources).map(([k,v])=>(
-              <div key={k} style={{padding:"3px 7px",borderRadius:3,background:"rgba(255,255,255,.012)",fontSize:7,fontFamily:F}}>
-                <span style={{color:v==="LIVE"?GRN:v==="MANUAL"?YLW:RED}}>● </span>
+            {data.sources&&Object.entries(data.sources).filter(([k])=>k!=="cboeDate").map(([k,v])=>(
+              <div key={k} style={{padding:"3px 7px",borderRadius:3,background:"rgba(255,255,255,.012)",fontSize:9,fontFamily:F}}>
+                <span style={{color:v?.includes?.("LIVE")?GRN:v==="MANUAL"?YLW:RED}}>● </span>
                 <span style={{color:"#9ca3af"}}>{k.toUpperCase()}</span>
                 <span style={{color:DM}}> {v}</span>
               </div>
