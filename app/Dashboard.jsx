@@ -663,89 +663,124 @@ export default function Dashboard(){
 
         {/* FUTURES ADR + ROLLING RETURNS */}
         {data.futures&&data.futures.length>0&&(
-        <div style={{padding:"12px 14px",borderRadius:8,background:"rgba(255,255,255,.012)",border:"1px solid rgba(255,255,255,.04)",marginBottom:10}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <span style={{fontSize:13,letterSpacing:".12em",color:MT,fontFamily:F}}>FUTURES — ADR & ROLLING RETURNS</span>
-            <span style={{fontSize:12,color:DM,fontFamily:F}}>ADR = Avg Daily Range · Returns vs close N days ago</span>
-          </div>
-          {/* Header row */}
-          <div style={{display:"grid",gridTemplateColumns:"60px 80px 56px 56px 56px 56px 46px 1px 56px 56px 56px 56px",gap:4,marginBottom:4,paddingBottom:6,borderBottom:"1px solid rgba(255,255,255,.06)"}}>
-            <span style={{fontSize:11,color:DM,fontFamily:F}}></span>
-            <span style={{fontSize:11,color:DM,fontFamily:F}}>Price</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>ADR5</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>ADR10</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>ADR20</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>Today</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>Used</span>
-            <span style={{background:"rgba(255,255,255,.06)",width:1}}></span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>1D</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>5D</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>20D</span>
-            <span style={{fontSize:11,color:DM,fontFamily:F,textAlign:"right"}}>60D</span>
-          </div>
-          {/* Data rows */}
-          {data.futures.map((f,i)=>{
-            if(!f.ok) return (
-              <div key={f.label} style={{display:"grid",gridTemplateColumns:"60px 1fr",gap:4,padding:"5px 0",opacity:.4}}>
-                <span style={{fontSize:13,fontWeight:600,color:TX,fontFamily:F}}>{f.label}</span>
-                <span style={{fontSize:12,color:RED,fontFamily:F}}>Error: {f.error}</span>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+          {/* LEFT: ADR TABLE */}
+          <div style={{padding:"12px 14px",borderRadius:8,background:"rgba(255,255,255,.012)",border:"1px solid rgba(255,255,255,.04)"}}>
+            <div style={{marginBottom:10}}>
+              <span style={{fontSize:13,letterSpacing:".12em",color:MT,fontFamily:F}}>AVERAGE DAILY RANGE</span>
+              <span style={{fontSize:11,color:DM,fontFamily:F,marginLeft:8}}>pts (high − low)</span>
+            </div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontFamily:F}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid rgba(255,255,255,.08)"}}>
+                  {["","ADR20","ADR10","ADR5","ADR3","YEST","TODAY"].map(h=>(
+                    <th key={h} style={{fontSize:11,color:DM,fontWeight:500,padding:"0 0 6px",textAlign:h?"right":"left",width:h?"14%":"auto"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.futures.map((f,i)=>{
+                  if(!f.ok) return <tr key={f.label}><td style={{fontSize:13,fontWeight:700,color:TX,padding:"6px 0"}}>{f.label}</td><td colSpan={6} style={{fontSize:12,color:RED,textAlign:"right"}}>err</td></tr>;
+                  const isV=f.label==="VIX";
+                  const fmt=v=>v!=null?(isV?v.toFixed(2):v.toFixed(0)):"—";
+                  const todayVsAdr=f.todayRange&&f.adr20?(f.todayRange/f.adr20*100):null;
+                  const tC=todayVsAdr>=100?"#f59e0b":todayVsAdr>=75?"#eab308":MT;
+                  return (
+                    <tr key={f.label} style={{borderBottom:i<data.futures.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
+                      <td style={{padding:"7px 0"}}>
+                        <div style={{fontSize:14,fontWeight:700,color:TX}}>{f.label}</div>
+                        <div style={{fontSize:10,color:DM,lineHeight:1}}>{f.name}</div>
+                      </td>
+                      <td style={{fontSize:13,color:TX,fontWeight:600,textAlign:"right",padding:"7px 0"}}>{fmt(f.adr20)}<span style={{fontSize:10,color:DM,marginLeft:2}}>{f.adr20pct?f.adr20pct.toFixed(1)+"%":""}</span></td>
+                      <td style={{fontSize:13,color:MT,textAlign:"right",padding:"7px 0"}}>{fmt(f.adr10)}</td>
+                      <td style={{fontSize:13,color:MT,textAlign:"right",padding:"7px 0"}}>{fmt(f.adr5)}</td>
+                      <td style={{fontSize:13,color:MT,textAlign:"right",padding:"7px 0"}}>{fmt(f.adr3)}</td>
+                      <td style={{fontSize:13,color:MT,textAlign:"right",padding:"7px 0"}}>{fmt(f.yestRange)}</td>
+                      <td style={{textAlign:"right",padding:"7px 0"}}>
+                        <span style={{fontSize:13,fontWeight:600,color:tC}}>{fmt(f.todayRange)}</span>
+                        {todayVsAdr!=null&&<div style={{fontSize:10,color:tC,fontWeight:600}}>{todayVsAdr.toFixed(0)}%</div>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {/* Mini ADR usage bars */}
+            <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.05)"}}>
+              <div style={{fontSize:10,color:DM,fontFamily:F,marginBottom:5}}>Today vs ADR(20)</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6}}>
+                {data.futures.filter(f=>f.ok).map(f=>{
+                  const pct=f.todayRange&&f.adr20?(f.todayRange/f.adr20*100):0;
+                  const c=pct>=100?"#f59e0b":pct>=75?"#eab308":"#22c55e";
+                  return (
+                    <div key={f.label+"b"}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                        <span style={{fontSize:10,color:MT,fontFamily:F}}>{f.label}</span>
+                        <span style={{fontSize:10,color:c,fontWeight:600,fontFamily:F}}>{pct.toFixed(0)}%</span>
+                      </div>
+                      <div style={{height:4,borderRadius:2,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
+                        <div style={{width:Math.min(pct,150)+"%",height:"100%",borderRadius:2,background:c}}/>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-            const rc=v=>!v&&v!==0?"—":v>0?GRN:v<0?RED:MT;
-            const rv=v=>!v&&v!==0?"—":((v>0?"+":"")+v.toFixed(2)+"%");
-            const usedC=f.rangeUsed>=100?"#f59e0b":f.rangeUsed>=75?"#eab308":MT;
-            return (
-              <div key={f.label} style={{display:"grid",gridTemplateColumns:"60px 80px 56px 56px 56px 56px 46px 1px 56px 56px 56px 56px",gap:4,padding:"5px 0",borderBottom:i<data.futures.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
-                <div>
-                  <div style={{fontSize:13,fontWeight:700,color:TX,fontFamily:F}}>{f.label}</div>
-                  <div style={{fontSize:10,color:DM,fontFamily:F}}>{f.name}</div>
-                </div>
-                <div>
-                  <div style={{fontSize:14,fontWeight:600,color:TX,fontFamily:F}}>{f.cur?.toLocaleString()}</div>
-                  <div style={{fontSize:11,color:rc(f.dayChg),fontFamily:F}}>{rv(f.dayChg)}</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:13,color:MT,fontFamily:F}}>{f.adr5?.toFixed(f.label==="VIX"?2:0)}</div>
-                  <div style={{fontSize:10,color:DM,fontFamily:F}}>5d</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:13,color:MT,fontFamily:F}}>{f.adr10?.toFixed(f.label==="VIX"?2:0)}</div>
-                  <div style={{fontSize:10,color:DM,fontFamily:F}}>10d</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:13,color:TX,fontWeight:600,fontFamily:F}}>{f.adr20?.toFixed(f.label==="VIX"?2:0)}</div>
-                  <div style={{fontSize:10,color:DM,fontFamily:F}}>{f.adr20pct?f.adr20pct.toFixed(1)+"%":""}</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:13,color:f.todayRange&&f.adr20&&f.todayRange>f.adr20?"#f59e0b":MT,fontFamily:F}}>{f.todayRange?.toFixed(f.label==="VIX"?2:0)}</div>
-                  <div style={{fontSize:10,color:DM,fontFamily:F}}>intra</div>
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontSize:13,fontWeight:600,color:usedC,fontFamily:F}}>{f.rangeUsed?f.rangeUsed+"%":"—"}</div>
-                </div>
-                <div style={{background:"rgba(255,255,255,.06)",width:1}}></div>
-                <div style={{textAlign:"right"}}><span style={{fontSize:13,color:rc(f.ret1d),fontFamily:F,fontWeight:600}}>{rv(f.ret1d)}</span></div>
-                <div style={{textAlign:"right"}}><span style={{fontSize:13,color:rc(f.ret5d),fontFamily:F}}>{rv(f.ret5d)}</span></div>
-                <div style={{textAlign:"right"}}><span style={{fontSize:13,color:rc(f.ret20d),fontFamily:F}}>{rv(f.ret20d)}</span></div>
-                <div style={{textAlign:"right"}}><span style={{fontSize:13,color:rc(f.ret60d),fontFamily:F}}>{rv(f.ret60d)}</span></div>
+            </div>
+          </div>
+
+          {/* RIGHT: ROLLING RETURNS */}
+          <div style={{padding:"12px 14px",borderRadius:8,background:"rgba(255,255,255,.012)",border:"1px solid rgba(255,255,255,.04)"}}>
+            <div style={{marginBottom:10}}>
+              <span style={{fontSize:13,letterSpacing:".12em",color:MT,fontFamily:F}}>ROLLING RETURNS</span>
+              <span style={{fontSize:11,color:DM,fontFamily:F,marginLeft:8}}>% chg vs close N days ago</span>
+            </div>
+            <table style={{width:"100%",borderCollapse:"collapse",fontFamily:F}}>
+              <thead>
+                <tr style={{borderBottom:"1px solid rgba(255,255,255,.08)"}}>
+                  {["","PRICE","1D","5D","10D","20D","60D"].map(h=>(
+                    <th key={h} style={{fontSize:11,color:DM,fontWeight:500,padding:"0 0 6px",textAlign:h&&h!=="PRICE"?"right":h==="PRICE"?"right":"left",width:h&&h!=="PRICE"?"13%":h==="PRICE"?"22%":"auto"}}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.futures.map((f,i)=>{
+                  if(!f.ok) return <tr key={f.label}><td style={{fontSize:13,fontWeight:700,color:TX,padding:"6px 0"}}>{f.label}</td><td colSpan={6} style={{fontSize:12,color:RED,textAlign:"right"}}>err</td></tr>;
+                  const rc=v=>v>0?GRN:v<0?RED:MT;
+                  const rv=v=>v!=null?((v>0?"+":"")+v.toFixed(2)+"%"):"—";
+                  return (
+                    <tr key={f.label} style={{borderBottom:i<data.futures.length-1?"1px solid rgba(255,255,255,.03)":"none"}}>
+                      <td style={{padding:"7px 0"}}>
+                        <div style={{fontSize:14,fontWeight:700,color:TX}}>{f.label}</div>
+                        <div style={{fontSize:10,color:DM,lineHeight:1}}>{f.name}</div>
+                      </td>
+                      <td style={{textAlign:"right",padding:"7px 0"}}>
+                        <div style={{fontSize:14,fontWeight:600,color:TX}}>{f.cur?.toLocaleString()}</div>
+                        <div style={{fontSize:11,color:rc(f.dayChg)}}>{rv(f.dayChg)}</div>
+                      </td>
+                      {[f.ret1d,f.ret5d,f.ret10d,f.ret20d,f.ret60d].map((v,j)=>(
+                        <td key={j} style={{fontSize:13,fontWeight:j===0?600:400,color:rc(v),textAlign:"right",padding:"7px 0"}}>{rv(v)}</td>
+                      ))}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {/* Heat strip */}
+            <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.05)"}}>
+              <div style={{fontSize:10,color:DM,fontFamily:F,marginBottom:5}}>20-Day Return Heat</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:6}}>
+                {data.futures.filter(f=>f.ok).map(f=>{
+                  const v=f.ret20d||0;
+                  const bg=v>2?"rgba(34,197,94,.2)":v>0?"rgba(34,197,94,.1)":v<-2?"rgba(239,68,68,.2)":v<0?"rgba(239,68,68,.1)":"rgba(255,255,255,.03)";
+                  const tc=v>0?GRN:v<0?RED:MT;
+                  return (
+                    <div key={f.label+"h"} style={{padding:"4px 6px",borderRadius:4,background:bg,textAlign:"center"}}>
+                      <div style={{fontSize:11,fontWeight:600,color:TX,fontFamily:F}}>{f.label}</div>
+                      <div style={{fontSize:13,fontWeight:700,color:tc,fontFamily:F}}>{v>0?"+":""}{v.toFixed(1)}%</div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-          {/* ADR range bars */}
-          <div style={{marginTop:10,paddingTop:8,borderTop:"1px solid rgba(255,255,255,.06)"}}>
-            <div style={{fontSize:11,color:DM,fontFamily:F,marginBottom:6}}>Intraday Range vs ADR(20) — how much of the expected daily move has been used</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-              {data.futures.filter(f=>f.ok&&f.rangeUsed!=null).map(f=>(
-                <div key={f.label+"bar"} style={{padding:"4px 0"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                    <span style={{fontSize:12,fontWeight:600,color:TX,fontFamily:F}}>{f.label}</span>
-                    <span style={{fontSize:12,color:f.rangeUsed>=100?"#f59e0b":f.rangeUsed>=75?"#eab308":GRN,fontFamily:F,fontWeight:600}}>{f.rangeUsed}%</span>
-                  </div>
-                  <div style={{height:6,borderRadius:3,background:"rgba(255,255,255,.06)",overflow:"hidden"}}>
-                    <div style={{width:Math.min(f.rangeUsed,150)+"%",height:"100%",borderRadius:3,background:f.rangeUsed>=100?"#f59e0b":f.rangeUsed>=75?"#eab308":"#22c55e",transition:"width .3s"}}/>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
