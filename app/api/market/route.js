@@ -198,7 +198,6 @@ export async function GET() {
   const spxChg = (spxCur && spxPrev) ? spxCur - spxPrev : 0;
   const spxPct = (spxPrev && spxPrev !== 0) ? (spxChg / spxPrev) * 100 : 0;
   const spxAll = spx.ok ? spx.allHistory : [];
-  const spxAll = spx.ok ? spx.allHistory : [];
   const spxMonthly = [];
   const step = Math.max(1, Math.floor(spxAll.length / 20));
   for (let i = 0; i < spxAll.length; i += step) spxMonthly.push(spxAll[i]);
