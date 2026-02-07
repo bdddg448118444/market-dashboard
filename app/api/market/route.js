@@ -20,7 +20,7 @@ async function fetchYahoo(symbol, range = "6mo", interval = "1d") {
     const closes = (result.indicators?.quote?.[0]?.close || []).filter(v => v !== null && v !== undefined);
     return {
       current: meta.regularMarketPrice,
-      previousClose: meta.chartPreviousClose || meta.previousClose,
+      previousClose: closes.length >= 2 ? closes.filter(v => v !== null && v !== undefined).slice(-2)[0] : (meta.previousClose || meta.chartPreviousClose),
       dayHigh: meta.regularMarketDayHigh,
       dayLow: meta.regularMarketDayLow,
       history: closes.slice(-30),
@@ -197,6 +197,7 @@ export async function GET() {
   const spxPrev = spx.ok ? spx.previousClose : null;
   const spxChg = (spxCur && spxPrev) ? spxCur - spxPrev : 0;
   const spxPct = (spxPrev && spxPrev !== 0) ? (spxChg / spxPrev) * 100 : 0;
+  const spxAll = spx.ok ? spx.allHistory : [];
   const spxAll = spx.ok ? spx.allHistory : [];
   const spxMonthly = [];
   const step = Math.max(1, Math.floor(spxAll.length / 20));
