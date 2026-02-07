@@ -136,11 +136,112 @@ function computeZScore(values, lookback = 252) {
   return { zscore: zScores[zScores.length - 1], history: zScores.slice(-30) };
 }
 
+// ── FUTURES ADR + ROLLING RETURNS ──
+async function fetchFutures() {
+  const symbols = [
+    { sym: "ES=F", label: "ES", name: "S&P 500" },
+    { sym: "NQ=F", label: "NQ", name: "Nasdaq 100" },
+    { sym: "YM=F", label: "YM", name: "Dow 30" },
+    { sym: "RTY=F", label: "RTY", name: "Russell 2K" },
+    { sym: "^VIX", label: "VIX", name: "VIX" },
+    { sym: "ZB=F", label: "ZB", name: "30Y Bond" },
+  ];
+  
+  const results = await Promise.all(symbols.map(async ({ sym, label, name }) => {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(sym)}?range=3mo&interval=1d`;
+      const res = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+        cache: "no-store"
+      });
+      if (!res.ok) throw new Error(`${sym}: ${res.status}`);
+      const json = await res.json();
+      const r = json.chart?.result?.[0];
+      if (!r) throw new Error(`No data: ${sym}`);
+      
+      const q = r.indicators?.quote?.[0] || {};
+      const highs = q.high || [];
+      const lows = q.low || [];
+      const closes = q.close || [];
+      const meta = r.meta;
+      
+      // Filter out null days (holidays etc)
+      const days = [];
+      for (let i = 0; i < closes.length; i++) {
+        if (closes[i] != null && highs[i] != null && lows[i] != null) {
+          days.push({ h: highs[i], l: lows[i], c: closes[i] });
+        }
+      }
+      
+      if (days.length < 5) throw new Error(`Not enough data: ${sym}`);
+      
+      const cur = meta.regularMarketPrice;
+      const prevClose = days.length >= 2 ? days[days.length - 2].c : null;
+      
+      // ADR calculations
+      const adr = (n) => {
+        const recent = days.slice(-n);
+        if (recent.length < n) return null;
+        const avg = recent.reduce((sum, d) => sum + (d.h - d.l), 0) / recent.length;
+        return avg;
+      };
+      
+      const adr5 = adr(5);
+      const adr10 = adr(10);
+      const adr20 = adr(20);
+      
+      // Today's range so far (from meta)
+      const todayRange = (meta.regularMarketDayHigh && meta.regularMarketDayLow) 
+        ? meta.regularMarketDayHigh - meta.regularMarketDayLow 
+        : null;
+      
+      // ADR% (as percentage of price)
+      const adr20pct = (adr20 && cur) ? (adr20 / cur) * 100 : null;
+      
+      // Today's range as % of ADR20
+      const rangeUsed = (todayRange && adr20) ? (todayRange / adr20) * 100 : null;
+      
+      // Rolling returns
+      const retN = (n) => {
+        if (days.length < n + 1) return null;
+        const old = days[days.length - 1 - n].c;
+        return old > 0 ? ((cur - old) / old) * 100 : null;
+      };
+      
+      const dayChg = prevClose ? ((cur - prevClose) / prevClose) * 100 : null;
+      
+      return {
+        label, name, ok: true,
+        cur: cur ? parseFloat(cur.toFixed(2)) : null,
+        dayChg: dayChg ? parseFloat(dayChg.toFixed(2)) : null,
+        dayHi: meta.regularMarketDayHigh ? parseFloat(meta.regularMarketDayHigh.toFixed(2)) : null,
+        dayLo: meta.regularMarketDayLow ? parseFloat(meta.regularMarketDayLow.toFixed(2)) : null,
+        todayRange: todayRange ? parseFloat(todayRange.toFixed(2)) : null,
+        adr5: adr5 ? parseFloat(adr5.toFixed(2)) : null,
+        adr10: adr10 ? parseFloat(adr10.toFixed(2)) : null,
+        adr20: adr20 ? parseFloat(adr20.toFixed(2)) : null,
+        adr20pct: adr20pct ? parseFloat(adr20pct.toFixed(2)) : null,
+        rangeUsed: rangeUsed ? parseFloat(rangeUsed.toFixed(0)) : null,
+        ret1d: dayChg ? parseFloat(dayChg.toFixed(2)) : null,
+        ret5d: retN(5) ? parseFloat(retN(5).toFixed(2)) : null,
+        ret10d: retN(10) ? parseFloat(retN(10).toFixed(2)) : null,
+        ret20d: retN(20) ? parseFloat(retN(20).toFixed(2)) : null,
+        ret60d: retN(60) ? parseFloat(retN(60).toFixed(2)) : null,
+      };
+    } catch (e) {
+      console.error(`Futures ${label}:`, e.message);
+      return { label, name, ok: false, error: e.message };
+    }
+  }));
+  
+  return results;
+}
+
 // ── MAIN ──
 export async function GET() {
   const startTime = Date.now();
 
-  const [vix, vix3m, vix9d, spx, hySpread, igSpread, cboe] = await Promise.all([
+  const [vix, vix3m, vix9d, spx, hySpread, igSpread, cboe, futures] = await Promise.all([
     fetchYahoo("^VIX"),
     fetchYahoo("^VIX3M"),
     fetchYahoo("^VIX9D"),
@@ -148,6 +249,7 @@ export async function GET() {
     fetchFRED("BAMLH0A0HYM2"),
     fetchFRED("BAMLC0A4CBBB"),
     fetchCBOE(),
+    fetchFutures(),
   ]);
 
   // VIX
@@ -256,6 +358,8 @@ export async function GET() {
     },
     // BPNDX — no free API exists, manual entry only
     bp: { cur: null, prev: null, h30: [] },
+    // Futures ADR + rolling returns
+    futures: futures || [],
     spx: {
       cur: spxCur, prev: spxPrev,
       chg: parseFloat(spxChg.toFixed(2)), pct: parseFloat(spxPct.toFixed(2)),
